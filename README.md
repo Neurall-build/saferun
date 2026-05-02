@@ -1,27 +1,72 @@
 # SafeRun 🛡️
 
-> "Stop letting your AI agents raw-dog your systems"
+> **Stop letting your AI agents raw-dog your systems.**
 
 A secure testing proxy and flight simulator for AI agents using the Model Context Protocol (MCP).
 
-## What is SafeRun?
+[![npm version](https://img.shields.io/npm/v/@neurall.build/saferun?style=flat-square)](https://www.npmjs.com/package/@neurall.build/saferun)
+[![GitHub stars](https://img.shields.io/github/stars/Neurall-build/saferun?style=flat-square)](https://github.com/Neurall-build/saferun)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 
-SafeRun is a middleman proxy that sits between your AI agent and MCP servers. It intercepts, logs, and gives you control over every tool call your AI wants to make.
+---
 
-## Why do you need it?
+## The Problem
 
-- **Dangerous actions** - AI agents with `DROP TABLE` or `DELETE FILE` permissions can cause real damage
-- **Cost** - Testing AI workflows repeatedly burns API credits
-- **Non-deterministic** - When prompts change, tool-calling logic can break without warning
+You built an AI agent. It can delete files, drop tables, wipe databases.
+
+You want to test it. But every test run is a potential disaster.
+
+**What could go wrong?**
+
+- `DELETE FROM users WHERE id=1` → oops, deleted ALL users
+- `DROP TABLE orders` → there goes 6 months of data
+- `rm -rf /` → dev machine gone
+
+AI agents are powerful. Testing them shouldn't be a leap of faith.
+
+---
+
+## The Solution
+
+SafeRun sits between your AI agent and MCP servers. It intercepts every tool call, logs it, assesses the risk, and lets you block dangerous operations before they execute.
+
+**No more blind trust. No more held breath.**
+
+```
+┌─────────────┐     SafeRun      ┌─────────────┐
+│   AI Agent  │ ──── proxy ──── │ MCP Server  │
+│  (Claude,   │  intercepts &   │ (filesystem,│
+│  GPT, etc.) │   blocks危险的  │  database)  │
+└─────────────┘                 └─────────────┘
+```
+
+---
 
 ## Features
 
-- 🔒 **Live Intercept Mode** - Watch in real-time, block or allow before execution
-- 📊 **Session Recording** - Log all tool calls to local SQLite database
-- 🎭 **Simulation Mode** - Dry-run dangerous operations without actually executing
-- 🔄 **Replay & Diff** - Re-run identical queries and compare results
-- 📋 **Risk Assessment** - Automatic risk level detection (low/medium/high)
-- 🌐 **Dashboard** - Web UI for monitoring all MCP traffic
+### 🔒 Live Interception Mode
+Watch your AI agent in real-time. See every tool call it wants to make.
+Click **ALLOW** or **BLOCK** before it executes.
+
+### 📊 Risk Assessment
+Every tool call is scored: **LOW** 🟢, **MEDIUM** 🟡, or **HIGH** 🔴
+Know exactly what your agent is about to do.
+
+### 🎥 Session Recording
+Full JSON-RPC audit trail. Replay, diff, and analyze every session.
+Catch regressions before they ship.
+
+### 🧪 Safe Simulation Mode
+Mock responses for dangerous actions. Test your agent's logic without touching production.
+
+### 📋 Default Security Rules
+Blocks dangerous operations out of the box:
+- `DROP TABLE` / `DROP DATABASE`
+- `DELETE` without WHERE clause
+- File deletions, sudo commands
+- And more...
+
+---
 
 ## Quick Start
 
@@ -29,57 +74,130 @@ SafeRun is a middleman proxy that sits between your AI agent and MCP servers. It
 # Install
 npm install -g @neurall.build/saferun
 
-# Start proxy (default port 3000, forward to MCP server at localhost:3001)
-saferun start
+# Start intercepting (AI agent → MCP server)
+saferun start --port 3000
 
-# Or with custom options
-saferun start --port 8080 --target http://my-mcp-server:3001
+# Point your AI agent to SafeRun
+export MCP_SERVER_URL="http://localhost:3000"
 
-# View dashboard
-open http://localhost:3000/
+# Your AI agent now goes through SafeRun
 ```
 
-## How it works
+Or use npx (no install):
 
+```bash
+npx @neurall.build/saferun start --port 3000
 ```
-AI Agent --> SafeRun Proxy --> MCP Server
-              |
-              +--> Logs to SQLite
-              +--> Shows in Dashboard
-              +--> Blocks if risky
+
+---
+
+## Usage
+
+### Start SafeRun
+
+```bash
+saferun start --port 3000
 ```
+
+### Connect Your AI Agent
+
+Point your AI agent to: `http://localhost:3000`
+
+### Dashboard
+
+Open `http://localhost:3000/dashboard` to see:
+- Live tool calls
+- Risk scores
+- Block/Allow buttons
+- Session history
+
+### CLI Commands
+
+```bash
+# Show security rules
+saferun rules
+
+# List recent sessions
+saferun sessions
+
+# Replay a session
+saferun replay <session-id>
+
+# Run in dry-run mode (mock all responses)
+saferun start --dry-run
+```
+
+---
 
 ## Configuration
 
-Create `.saferun.json` to customize rules:
+Create `.saferun.json` in your project:
 
 ```json
 {
-  "port": 3000,
-  "targetUrl": "http://localhost:3001",
   "rules": [
-    { "category": "WRITE", "pattern": "DROP TABLE", "action": "block" },
-    { "category": "READ", "pattern": "*", "action": "allow" }
-  ]
+    { "name": "block-drop", "category": "ADMIN", "pattern": "DROP", "action": "block" },
+    { "name": "warn-delete", "category": "WRITE", "pattern": "DELETE", "action": "warn" }
+  ],
+  "port": 3000,
+  "logLevel": "info"
 }
 ```
 
-## Commands
+---
+
+## API Reference
+
+### Start Proxy
 
 ```bash
-saferun start    # Start proxy server
-saferun init     # Create default config
-saferun rules    # List security rules
+saferun start --port <port> [--dry-run]
 ```
 
-## Risk Categories
+### WebSocket Dashboard
 
-| Category | Description | Default Action |
-|----------|-------------|----------------|
-| READ     | Non-destructive read operations | Allow |
-| WRITE    | Modify data, files, etc. | Warn |
-| ADMIN    | Database admin, system-level | Block |
+```
+ws://localhost:3000/dashboard
+```
 
-## License
+### REST API
 
-MIT
+```
+GET  /sessions          # List all sessions
+GET  /sessions/:id      # Get session details
+POST /rules            # Add a rule
+GET  /rules            # List all rules
+```
+
+---
+
+## Why SafeRun?
+
+| Feature | SafeRun | Manual Testing | Other Tools |
+|---------|---------|---------------|-------------|
+| Real-time interception | ✅ | ❌ | ❌ |
+| Risk scoring | ✅ | ❌ | ❌ |
+| One-click block | ✅ | ❌ | ❌ |
+| Session replay | ✅ | ❌ | ❌ |
+| Free & open source | ✅ | ✅ | ❌ |
+| MCP native | ✅ | ❌ | ❌ |
+
+---
+
+## Community
+
+- ⭐ Star us on [GitHub](https://github.com/Neurall-build/saferun)
+- 📦 npm: [@neurall.build/saferun](https://www.npmjs.com/package/@neurall.build/saferun)
+- 🐛 Issues: [GitHub Issues](https://github.com/Neurall-build/saferun/issues)
+
+---
+
+## Disclaimer
+
+SafeRun is a testing tool. Don't run it against production without understanding what you're doing. Always review the logs. You're responsible for your own actions.
+
+---
+
+<p align="center">
+Made with 🛡️ by <a href="https://github.com/Neurall-build">Neurall</a>
+</p>
