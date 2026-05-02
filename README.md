@@ -36,7 +36,7 @@ SafeRun sits between your AI agent and MCP servers. It intercepts every tool cal
 ┌─────────────┐     SafeRun      ┌─────────────┐
 │   AI Agent  │ ──── proxy ──── │ MCP Server  │
 │  (Claude,   │  intercepts &   │ (filesystem,│
-│  GPT, etc.) │   blocks危险的  │  database)  │
+│  GPT, etc.) │   blocks risky   │  database)  │
 └─────────────┘                 └─────────────┘
 ```
 
@@ -181,6 +181,20 @@ GET  /rules            # List all rules
 | Session replay | ✅ | ❌ | ❌ |
 | Free & open source | ✅ | ✅ | ❌ |
 | MCP native | ✅ | ❌ | ❌ |
+
+---
+
+## Roadmap
+
+**v0.2 (Next)**
+- Environment-specific rule profiles (dev agent can't reach prod credentials)
+- Cost tracking & savings report
+- Regression testing alerts
+
+**v0.3**
+- Custom profiles (banking, ecommerce, healthcare templates)
+- API access for CI/CD pipelines
+- Team collaboration features
 
 ---
 
